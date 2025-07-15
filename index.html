@@ -1862,32 +1862,121 @@ see also <a href="https://bwars.com/sites/default/files/diary_downloads/Key_to_B
 <p data-content="amiet, f. (2008): vespoidea. mutillidae, sapygidae, scoliidae, tiphiidae. fauna helvetica 23.">Amiet, F. (2008): Vespoidea. Mutillidae, Sapygidae, Scoliidae, Tiphiidae. Fauna Helvetica 23.</p>
 </div>
 </div>
-
 <script>
-function autocompleteFilter() {
-  const input = document.getElementById("liveSearch").value.toLowerCase().trim();
-  const panels = document.querySelectorAll(".panel");
-  const accordions = document.querySelectorAll(".accordion");
+  
+  function toggleTheme() {
+    const style = document.getElementById("theme-style");
+    const isLight = style.innerHTML.includes("background-color: #fff");
+    style.innerHTML = isLight ?
+      style.innerHTML
+        .replace(/#fff/g, "#111")
+        .replace(/#000/g, "white")
+        .replace(/#eee/g, "#222")
+        .replace(/#f9f9f9/g, "#1a1a1a")
+        .replace(/#f0f0f0/g, "#2a2a2a")
+        .replace(/#e0e0e0/g, "#333")
+        .replace(/#d0d0d0/g, "#3a3a3a")
+        .replace(/#aaa/g, "#555")
+    :
+      style.innerHTML
+        .replace(/#111/g, "#fff")
+        .replace(/white/g, "#000")
+        .replace(/#222/g, "#eee")
+        .replace(/#1a1a1a/g, "#f9f9f9")
+        .replace(/#2a2a2a/g, "#f0f0f0")
+        .replace(/#333/g, "#e0e0e0")
+        .replace(/#3a3a3a/g, "#d0d0d0")
+        .replace(/#555/g, "#aaa");
+  }
 
+function filterContent() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const allAccordions = document.querySelectorAll(".accordion");
+    const allPanels = document.querySelectorAll(".panel");
+    const allParas = document.querySelectorAll("[data-content]");
+
+    allParas.forEach(el => {
+      el.innerHTML = el.textContent; // Reset highlighting
+    });
+
+    allPanels.forEach(panel => panel.style.display = "none");
+    allAccordions.forEach(acc => acc.classList.remove("active"));
+
+    if (!input) return;
+
+    allParas.forEach(el => {
+      const text = el.textContent.toLowerCase();
+      if (text.includes(input)) {
+        const regex = new RegExp(`(${input})`, "gi");
+        el.innerHTML = el.innerHTML.replace(regex, "<span class='highlight'>$1</span>");
+        el.style.display = "";
+      } else {
+        el.style.display = "none";
+      }
+    });
+  }
+
+  const acc = document.getElementsByClassName("accordion");
+  for (let i = 0; i < acc.length; i++) {
+    acc[i].addEventListener("click", function () {
+      this.classList.toggle("active");
+      const panel = this.nextElementSibling;
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    });
+  }
+
+  function toggleAll() {
+    const acc = document.getElementsByClassName("accordion");
+    const allExpanded = document.getElementById("toggleAllBtn").dataset.expanded === "true";
+
+    for (let i = 0; i < acc.length; i++) {
+      const panel = acc[i].nextElementSibling;
+      if (allExpanded) {
+        acc[i].classList.remove("active");
+        panel.style.display = "none";
+      } else {
+        acc[i].classList.add("active");
+        panel.style.display = "block";
+      }
+    }
+
+    const btn = document.getElementById("toggleAllBtn");
+    btn.dataset.expanded = (!allExpanded).toString();
+    btn.textContent = allExpanded ? "Expand all" : "Collapse all";
+  }
+
+
+function autocompleteFilter() {
   // Remove previous highlights
   document.querySelectorAll("span.highlight").forEach(span => {
     span.outerHTML = span.innerText;
   });
+  const input = document.getElementById("liveSearch").value.toLowerCase().trim();
+  const panels = document.querySelectorAll(".panel");
+  const accordions = document.querySelectorAll(".accordion");
 
-  // Reset visibility
+  // Remove all highlights
+  document.querySelectorAll(".highlight").forEach(span => {
+    span.outerHTML = span.innerHTML;
+  });
+
+  // Reset all panels and accordions
   panels.forEach(p => {
     p.style.display = "none";
     p.dataset.match = "false";
   });
-  accordions.forEach(acc => {
-    acc.style.display = "none";
-    if (acc.classList.contains("active")) acc.click();
+  accordions.forEach(a => {
+    a.classList.remove("active");
+    if (a.nextElementSibling && a.nextElementSibling.classList.contains("panel")) {
+      a.nextElementSibling.style.display = "none";
+    }
   });
 
   if (!input) return;
 
   const matches = [];
 
+  // Step 1: Find matching panels based on data-fulltext
   panels.forEach(panel => {
     if (panel.dataset.fulltext.includes(input)) {
       panel.dataset.match = "true";
@@ -1895,44 +1984,29 @@ function autocompleteFilter() {
     }
   });
 
+  // Step 2: Open all matching panels and their ancestors
   function openAncestors(panel) {
     while (panel) {
       panel.style.display = "block";
       const acc = panel.previousElementSibling;
-      if (acc && acc.classList.contains("accordion")) {
-        acc.style.display = "block";
-        if (!acc.classList.contains("active")) acc.click();
-        panel = acc.parentElement.closest(".panel");
-      } else {
-        break;
+      if (acc && acc.classList.contains("accordion") && !acc.classList.contains("active")) {
+        acc.classList.add("active");
+        acc.nextElementSibling.style.display = "block";
       }
+      panel = panel.parentElement.closest(".panel");
     }
   }
 
   matches.forEach(panel => {
     openAncestors(panel);
+    // Highlight text
     panel.querySelectorAll("*").forEach(el => {
       if (el.children.length === 0 && el.textContent.toLowerCase().includes(input)) {
         el.innerHTML = el.textContent.replace(new RegExp("(" + input + ")", "gi"), "<span class='highlight'>$1</span>");
       }
     });
   });
-
-  // Final pass: hide accordion buttons with no visible panels
-  panels.forEach(panel => {
-    const acc = panel.previousElementSibling;
-    if (panel.dataset.match === "true") {
-      panel.style.display = "block";
-      if (acc && acc.classList.contains("accordion")) {
-        acc.style.display = "block";
-      }
-    } else {
-      panel.style.display = "none";
-      if (acc && acc.classList.contains("accordion")) {
-        acc.style.display = "none";
-      }
-    }
-  });
 }
-</script></body>
+</script>
+</body>
 </html>
